@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_job_hunter
+      POSTGRES_USER: jobhunter
+      POSTGRES_PASSWORD: jobhunter
+    ports:
+      - "5432:5432"
+    volumes:
+      - job_hunter_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  job_hunter_postgres_data:

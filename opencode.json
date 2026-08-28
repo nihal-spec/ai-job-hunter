@@ -1,0 +1,53 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "provider": {
+    "seekai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "SeekAI",
+      "options": {
+        "baseURL": "https://seekai.cc/v1",
+        "apiKey": "{env:SEEKAI_API_KEY}"
+      },
+      "models": {
+        "claude-opus-4-8": {
+          "name": "Claude Opus 4.8"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro"
+        }
+      }
+    },
+
+    "empero": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Empero Free",
+      "options": {
+        "baseURL": "https://free.empero.org/v1",
+        "apiKey": "free"
+      },
+      "models": {
+        "glm-5.3-flash": {
+          "name": "GLM 5.3 Flash"
+        },
+        "qwen3.8-flash": {
+          "name": "Qwen 3.8 Flash"
+        }
+      }
+    },
+
+    "bai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "B.AI",
+      "options": {
+        "baseURL": "https://api.b.ai/v1",
+        "apiKey": "{env:BAI_API_KEY}"
+      },
+      "models": {
+        "glm-5.3-flash": {
+          "name": "GLM 5.3 Flash"
+        }
+      }
+    }
+  }
+}

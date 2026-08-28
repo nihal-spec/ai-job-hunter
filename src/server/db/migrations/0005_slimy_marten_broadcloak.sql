@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "jobs_canonical_application_url_idx" ON "jobs" USING btree ("canonical_application_url");
