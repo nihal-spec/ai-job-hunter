@@ -1,4 +1,3 @@
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { ResumeManager } from "@/components/resumes/resume-manager";
 import { ProfileEditor } from "@/components/profiles/profile-editor";
 import { PreferenceManager } from "@/components/preferences/preference-manager";
@@ -25,7 +24,6 @@ export default async function DashboardPage({
           <p className="eyebrow">Private workspace</p>
           <h1>Welcome, {session.user.name}</h1>
         </div>
-        <SignOutButton />
       </header>
       <section className="analytics-panel" aria-labelledby="analytics-heading">
         <div className="analytics-heading">

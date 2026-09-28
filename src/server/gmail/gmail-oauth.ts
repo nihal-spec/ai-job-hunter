@@ -3,7 +3,13 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { env } from "@/env";
 import type { GoogleTokenResponse, GoogleUserInfo } from "@/server/gmail/types";
 
-const scopes = ["https://www.googleapis.com/auth/gmail.readonly"];
+// gmail.send was added for the outreach feature (src/server/outreach/) — existing connections made
+// before this change only hold gmail.readonly and must reconnect to grant it; see the Gmail
+// settings UI, which reads `scope` off the stored connection to detect this.
+const scopes = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.send",
+];
 const stateLifetimeMs = 10 * 60 * 1000;
 
 function requireConfig() {

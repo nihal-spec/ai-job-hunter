@@ -1,3 +1,4 @@
+import { env } from "@/env";
 import { findApplication } from "@/server/applications/repository";
 import { findActiveProfile } from "@/server/profile/repository";
 import type {
@@ -21,6 +22,11 @@ import {
   generateTailoredResumeRecommendationsContent,
 } from "@/server/assistant/generator";
 import {
+  tryGenerateCoverLetterWithAI,
+  tryGenerateScreeningAnswersWithAI,
+  tryGenerateTailoredResumeWithAI,
+} from "@/server/assistant/ai-generator";
+import {
   createApplicationMaterialRecord,
   getLatestMaterialVersion,
   listApplicationMaterials,
@@ -39,8 +45,18 @@ export async function generateCoverLetter(
   if (!activeProfile) return { error: "ACTIVE_PROFILE_REQUIRED" as const };
 
   const verifiedFacts = extractVerifiedFacts(activeProfile);
-  const structured = generateCoverLetterContent(verifiedFacts, applicationData.job, input);
-  const verification = verifyCoverLetter(structured, verifiedFacts);
+
+  let structured = await tryGenerateCoverLetterWithAI(verifiedFacts, applicationData.job, input);
+  let verification = structured ? verifyCoverLetter(structured, verifiedFacts) : null;
+  let aiProvider = "openai";
+  let aiModel = env.AI_TEXT_MODEL;
+
+  if (!structured || !verification?.isValid) {
+    structured = generateCoverLetterContent(verifiedFacts, applicationData.job, input);
+    verification = verifyCoverLetter(structured, verifiedFacts);
+    aiProvider = DEFAULT_AI_PROVIDER;
+    aiModel = DEFAULT_AI_MODEL;
+  }
 
   const currentVersion = await getLatestMaterialVersion(applicationId, "cover_letter");
   const nextVersion = currentVersion + 1;
@@ -52,8 +68,8 @@ export async function generateCoverLetter(
     content: structured.fullText,
     structuredContent: { ...structured, verification },
     sourceFacts: verifiedFacts,
-    aiProvider: DEFAULT_AI_PROVIDER,
-    aiModel: DEFAULT_AI_MODEL,
+    aiProvider,
+    aiModel,
     promptVersion: ASSISTANT_PROMPT_VERSION,
     generationStatus: "completed",
   });
@@ -77,12 +93,22 @@ export async function generateTailoredResumeRecommendations(
   if (!activeProfile) return { error: "ACTIVE_PROFILE_REQUIRED" as const };
 
   const verifiedFacts = extractVerifiedFacts(activeProfile);
-  const structured = generateTailoredResumeRecommendationsContent(
-    verifiedFacts,
-    applicationData.job,
-    input,
-  );
-  const verification = verifyTailoredResume(structured, verifiedFacts);
+
+  let structured = await tryGenerateTailoredResumeWithAI(verifiedFacts, applicationData.job, input);
+  let verification = structured ? verifyTailoredResume(structured, verifiedFacts) : null;
+  let aiProvider = "openai";
+  let aiModel = env.AI_TEXT_MODEL;
+
+  if (!structured || !verification?.isValid) {
+    structured = generateTailoredResumeRecommendationsContent(
+      verifiedFacts,
+      applicationData.job,
+      input,
+    );
+    verification = verifyTailoredResume(structured, verifiedFacts);
+    aiProvider = DEFAULT_AI_PROVIDER;
+    aiModel = DEFAULT_AI_MODEL;
+  }
 
   const currentVersion = await getLatestMaterialVersion(
     applicationId,
@@ -97,8 +123,8 @@ export async function generateTailoredResumeRecommendations(
     content: structured.fullText,
     structuredContent: { ...structured, verification },
     sourceFacts: verifiedFacts,
-    aiProvider: DEFAULT_AI_PROVIDER,
-    aiModel: DEFAULT_AI_MODEL,
+    aiProvider,
+    aiModel,
     promptVersion: ASSISTANT_PROMPT_VERSION,
     generationStatus: "completed",
   });
@@ -122,8 +148,18 @@ export async function generateScreeningAnswers(
   if (!activeProfile) return { error: "ACTIVE_PROFILE_REQUIRED" as const };
 
   const verifiedFacts = extractVerifiedFacts(activeProfile);
-  const structured = generateScreeningAnswersContent(verifiedFacts, applicationData.job, input);
-  const verification = verifyScreeningAnswers(structured, verifiedFacts);
+
+  let structured = await tryGenerateScreeningAnswersWithAI(verifiedFacts, applicationData.job, input);
+  let verification = structured ? verifyScreeningAnswers(structured, verifiedFacts) : null;
+  let aiProvider = "openai";
+  let aiModel = env.AI_TEXT_MODEL;
+
+  if (!structured || !verification?.isValid) {
+    structured = generateScreeningAnswersContent(verifiedFacts, applicationData.job, input);
+    verification = verifyScreeningAnswers(structured, verifiedFacts);
+    aiProvider = DEFAULT_AI_PROVIDER;
+    aiModel = DEFAULT_AI_MODEL;
+  }
 
   const currentVersion = await getLatestMaterialVersion(applicationId, "screening_answers");
   const nextVersion = currentVersion + 1;
@@ -135,8 +171,8 @@ export async function generateScreeningAnswers(
     content: structured.fullText,
     structuredContent: { ...structured, verification },
     sourceFacts: verifiedFacts,
-    aiProvider: DEFAULT_AI_PROVIDER,
-    aiModel: DEFAULT_AI_MODEL,
+    aiProvider,
+    aiModel,
     promptVersion: ASSISTANT_PROMPT_VERSION,
     generationStatus: "completed",
   });

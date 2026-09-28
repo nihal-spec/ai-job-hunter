@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getRequestSession } from "@/server/auth/request-session";
 import { changeApplicationStatusInput } from "@/server/applications/contracts";
 import { changeApplicationStatus } from "@/server/applications/service";
+import { recordAuditEvent } from "@/server/audit/log";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getRequestSession(request.headers);
@@ -24,7 +25,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     parsed.data.note,
     parsed.data.occurredAt,
   );
-  if ("error" in result)
+  const { id: applicationId } = await context.params;
+  if ("error" in result) {
+    void recordAuditEvent({
+      userId: session.user.id,
+      action: "APPLICATION_STATUS_CHANGED",
+      resourceType: "application",
+      resourceId: applicationId,
+      outcome: "failure",
+      metadata: { requestedStatus: parsed.data.status, error: result.error },
+    });
     return NextResponse.json(
       {
         error: {
@@ -37,5 +47,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       },
       { status: result.error === "INVALID_TRANSITION" ? 409 : 404 },
     );
+  }
+  void recordAuditEvent({
+    userId: session.user.id,
+    action: "APPLICATION_STATUS_CHANGED",
+    resourceType: "application",
+    resourceId: applicationId,
+    outcome: "success",
+    metadata: { status: parsed.data.status },
+  });
   return NextResponse.json({ data: result.application });
 }

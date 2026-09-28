@@ -1,22 +1,24 @@
-import Link from "next/link";
-
+import { AppHeader, type NavLink } from "@/components/ui/app-header";
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import { findUserAccessStatus } from "@/server/admin/repository";
 import { requireSession } from "@/server/auth/session";
 
+const baseNavLinks: NavLink[] = [
+  { href: "/dashboard", label: "Workspace" },
+  { href: "/jobs", label: "Discover jobs" },
+  { href: "/saved", label: "Saved jobs" },
+  { href: "/applications", label: "Applications" },
+  { href: "/emails", label: "Emails" },
+  { href: "/outreach", label: "Outreach" },
+];
+
 export default async function AppLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  await requireSession();
+  const session = await requireSession();
+  const access = await findUserAccessStatus(session.user.id);
+  const navLinks = access?.role === "admin" ? [...baseNavLinks, { href: "/admin", label: "Admin" }] : baseNavLinks;
   return (
-    <div className="app-frame">
-      <nav className="app-nav" aria-label="Product navigation">
-        <Link className="app-brand" href="/dashboard">
-          AI Job Hunter
-        </Link>
-        <div>
-          <Link href="/dashboard">Workspace</Link>
-          <Link href="/jobs">Discover jobs</Link>
-          <Link href="/saved">Saved jobs</Link>
-          <Link href="/applications">Applications</Link>
-        </div>
-      </nav>
+    <div className="app-frame min-h-screen">
+      <AppHeader links={navLinks} actions={<SignOutButton />} />
       {children}
     </div>
   );

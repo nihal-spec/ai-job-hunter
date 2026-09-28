@@ -11,6 +11,7 @@ import {
   type MatchInput,
 } from "@/server/matching/contracts";
 import { scoreMatch } from "@/server/matching/scorer";
+import { cosineSimilarity, ensureJobEmbedding, ensureProfileEmbedding } from "@/server/matching/embeddings";
 import { findPreference } from "@/server/preferences/repository";
 import { findProfile } from "@/server/profile/repository";
 
@@ -92,6 +93,25 @@ export async function calculateJobMatch(
   if (!profileData || !preferenceData) throw new Error("MATCH_CONTEXT_REQUIRED");
   const parsedWeights = matchWeights.safeParse(preference.scoringWeights);
 
+  const [profileEmbedding, jobEmbedding] = await Promise.all([
+    ensureProfileEmbedding(
+      profile.id,
+      {
+        professionalSummary: profile.professionalSummary,
+        skills: profileData.skills,
+        experiences: profileData.experiences,
+      },
+      profile.embedding,
+    ),
+    ensureJobEmbedding(
+      job.id,
+      `${job.title}\n${job.companyName}\n${job.description}`,
+      job.embedding,
+    ),
+  ]);
+  const vectorSimilarity =
+    profileEmbedding && jobEmbedding ? cosineSimilarity(profileEmbedding, jobEmbedding) : null;
+
   const input: MatchInput = {
     candidate: {
       skills: profileData.skills.map((skill) => ({
@@ -136,6 +156,7 @@ export async function calculateJobMatch(
       preferredSkills: preferenceData.skills.map((item) => item.skill),
       weights: parsedWeights.success ? parsedWeights.data : defaultMatchWeights,
     },
+    vectorSimilarity,
   };
 
   const result = scoreMatch(input);
@@ -148,6 +169,7 @@ export async function calculateJobMatch(
     locationScore: result.components.location.toFixed(2),
     educationScore: result.components.education.toFixed(2),
     otherScore: result.components.other.toFixed(2),
+    vectorSimilarity: result.vectorSimilarity === null ? null : result.vectorSimilarity.toFixed(5),
     strengths: result.strengths,
     partialMatches: result.partialMatches,
     gaps: result.gaps,
