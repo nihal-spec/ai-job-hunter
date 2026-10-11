@@ -27,7 +27,14 @@ function validateDateOrder(
   if (startDate && endDate && endDate < startDate) throw new Error("END_DATE_BEFORE_START_DATE");
 }
 
-export async function updateProfile(id: string, userId: string, input: ProfileInput) {
+export async function updateProfile(
+  id: string,
+  userId: string,
+  input: ProfileInput,
+  options: { source?: "user" | "ai_inference"; verified?: boolean } = {},
+) {
+  const source = options.source ?? "user";
+  const verified = options.verified ?? true;
   const existing = await findProfile(id, userId);
   if (!existing) return undefined;
 
@@ -77,8 +84,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           name: skill.name,
           normalizedName: normalized(skill.name),
           category: skill.category,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           confidence: "1",
           createdAt: now,
           updatedAt: now,
@@ -94,8 +101,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           startDate: item.startDate ?? null,
           endDate: item.endDate ?? null,
           description: item.description ?? null,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           sortOrder: index,
           createdAt: now,
           updatedAt: now,
@@ -112,8 +119,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           endDate: item.endDate ?? null,
           grade: item.grade ?? null,
           description: item.description ?? null,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           sortOrder: index,
           createdAt: now,
           updatedAt: now,
@@ -129,8 +136,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           url: item.url ?? null,
           startDate: item.startDate ?? null,
           endDate: item.endDate ?? null,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           sortOrder: index,
           createdAt: now,
           updatedAt: now,
@@ -146,8 +153,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           expiresAt: item.expiresAt ?? null,
           credentialId: item.credentialId ?? null,
           credentialUrl: item.credentialUrl ?? null,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           sortOrder: index,
           createdAt: now,
           updatedAt: now,
@@ -159,8 +166,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           ...item,
           profileId: id,
           proficiency: item.proficiency ?? null,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           createdAt: now,
           updatedAt: now,
         })),
@@ -171,8 +178,8 @@ export async function updateProfile(id: string, userId: string, input: ProfileIn
           ...item,
           profileId: id,
           label: item.label ?? null,
-          source: "user" as const,
-          verified: true,
+          source,
+          verified,
           createdAt: now,
           updatedAt: now,
         })),
@@ -186,6 +193,14 @@ export async function createEmptyProfile(userId: string) {
   const [profile] = await db
     .insert(candidateProfiles)
     .values({ id: randomUUID(), userId })
+    .returning();
+  return profile;
+}
+
+export async function createProfileFromResume(userId: string, resumeId: string) {
+  const [profile] = await db
+    .insert(candidateProfiles)
+    .values({ id: randomUUID(), userId, sourceResumeId: resumeId })
     .returning();
   return profile;
 }

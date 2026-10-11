@@ -190,6 +190,17 @@ export function scoreMatch(input: MatchInput): MatchResult {
       0,
     ),
   );
+
+  // Semantic similarity from embeddings is a minority nudge (at most 15% of the final score),
+  // never the primary signal, per PROJECT_SPEC.md §8/§13 ("do not use vector similarity as the
+  // only score"). It's additive on top of the deterministic weighted score above, not a
+  // replacement for any component.
+  const hasVectorSimilarity = typeof input.vectorSimilarity === "number";
+  if (hasVectorSimilarity) {
+    const semanticScore = round(((input.vectorSimilarity! + 1) / 2) * 100);
+    overallScore = round(overallScore * 0.85 + semanticScore * 0.15);
+  }
+
   const disqualified = excluded.length > 0;
   if (disqualified) overallScore = Math.min(overallScore, 20);
 
@@ -200,6 +211,9 @@ export function scoreMatch(input: MatchInput): MatchResult {
     overallScore,
     category: resultCategory,
     components,
+    vectorSimilarity: hasVectorSimilarity
+      ? Math.round(input.vectorSimilarity! * 100000) / 100000
+      : null,
     strengths,
     partialMatches: partialSkills,
     gaps,

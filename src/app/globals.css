@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/*
+ * Tailwind v4 theme tokens. These mirror the --ink/--muted/etc. custom properties below so new
+ * components can use Tailwind utilities (bg-paper, text-muted, border-line, ...) while pages not
+ * yet migrated off the legacy classes keep working unchanged. Keep both in sync until the
+ * Tailwind retrofit (Milestone 6) removes the legacy block entirely.
+ */
+@theme {
+  --color-ink: #20251f;
+  --color-muted: #687166;
+  --color-paper: #f4f5ef;
+  --color-surface: #fbfcf8;
+  --color-line: #d8ded3;
+  --color-accent: #315c49;
+  --color-accent-soft: #dce9df;
+  --color-danger: #8b2f2f;
+  --color-danger-soft: #f6e4e4;
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+
 :root {
   --ink: #20251f;
   --muted: #687166;

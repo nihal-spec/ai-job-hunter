@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getRequestSession } from "@/server/auth/request-session";
 import { getUserResumes, ResumeLimitError, uploadResume } from "@/server/resume/service";
 import { ResumeValidationError } from "@/server/resume/validation";
+import { enforceRateLimit, RateLimitExceededError } from "@/server/rate-limit/limiter";
 
 export async function GET(request: Request) {
   const session = await getRequestSession(request.headers);
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
     );
 
   try {
+    await enforceRateLimit(session.user.id, "resume_upload");
+
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) {
@@ -36,6 +39,12 @@ export async function POST(request: Request) {
     const resume = await uploadResume(session.user.id, file);
     return NextResponse.json({ data: resume }, { status: 201 });
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: { code: "RATE_LIMITED", message: "Too many resume uploads. Try again later." } },
+        { status: 429 },
+      );
+    }
     if (error instanceof ResumeValidationError) {
       const status =
         error.code === "FILE_TOO_LARGE" ? 413 : error.code === "UNSUPPORTED_FILE_TYPE" ? 415 : 422;

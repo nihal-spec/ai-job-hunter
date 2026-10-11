@@ -88,6 +88,7 @@ export type MatchResult = {
     education: number;
     other: number;
   };
+  vectorSimilarity: number | null;
   strengths: string[];
   partialMatches: string[];
   gaps: string[];

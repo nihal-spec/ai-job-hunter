@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getRequestSession } from "@/server/auth/request-session";
 import { generateScreeningAnswersInputSchema } from "@/server/assistant/contracts";
 import { generateScreeningAnswers } from "@/server/assistant/service";
+import { enforceRateLimit, RateLimitExceededError } from "@/server/rate-limit/limiter";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getRequestSession(request.headers);
@@ -25,6 +26,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       },
       { status: 422 },
     );
+  }
+
+  try {
+    await enforceRateLimit(session.user.id, "ai_generation");
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: { code: "RATE_LIMITED", message: "Too many generation requests. Try again later." } },
+        { status: 429 },
+      );
+    }
+    throw error;
   }
 
   const { id: applicationId } = await context.params;

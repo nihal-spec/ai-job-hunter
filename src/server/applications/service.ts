@@ -100,6 +100,7 @@ export async function changeApplicationStatus(
   status: ApplicationStatus,
   note?: string | null,
   occurredAt?: string,
+  changedBy: string = "user",
 ) {
   const existing = await findApplication(userId, id);
   if (!existing) return { error: "NOT_FOUND" as const };
@@ -124,7 +125,7 @@ export async function changeApplicationStatus(
       applicationId: id,
       fromStatus: existing.application.status,
       toStatus: status,
-      changedBy: "user",
+      changedBy,
       note: note ?? null,
       occurredAt: timestamp,
     });

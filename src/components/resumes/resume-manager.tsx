@@ -2,6 +2,8 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 
+import { useToast } from "@/components/ui/toast";
+
 type Resume = {
   id: string;
   displayName: string;
@@ -22,6 +24,8 @@ export function ResumeManager() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [draftingId, setDraftingId] = useState<string | null>(null);
+  const showToast = useToast();
 
   async function loadResumes() {
     const response = await fetch("/api/resumes", { cache: "no-store" });
@@ -72,6 +76,25 @@ export function ResumeManager() {
     setResumes((current) => current.filter((resume) => resume.id !== id));
   }
 
+  async function draftProfile(id: string) {
+    setDraftingId(id);
+    const response = await fetch(`/api/resumes/${id}/extract-profile`, { method: "POST" });
+    setDraftingId(null);
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as {
+        error?: { code?: string; message?: string };
+      } | null;
+      showToast(
+        result?.error?.code === "AI_NOT_CONFIGURED"
+          ? "AI profile drafting isn't enabled on this server yet."
+          : (result?.error?.message ?? "We could not draft a profile from that resume."),
+        "error",
+      );
+      return;
+    }
+    showToast("Draft profile created from your resume. Review it below before activating it.", "success");
+  }
+
   return (
     <section className="resume-manager" aria-labelledby="resume-title">
       <div className="resume-heading">
@@ -111,6 +134,15 @@ export function ResumeManager() {
                 <span className={`resume-status resume-status-${resume.status}`}>
                   {resume.status}
                 </span>
+                {resume.status === "ready" ? (
+                  <button
+                    type="button"
+                    onClick={() => draftProfile(resume.id)}
+                    disabled={draftingId === resume.id}
+                  >
+                    {draftingId === resume.id ? "Drafting..." : "Draft profile with AI"}
+                  </button>
+                ) : null}
                 <button type="button" onClick={() => remove(resume.id)}>
                   Delete
                 </button>

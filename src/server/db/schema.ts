@@ -65,6 +65,46 @@ export const processingStatus = pgEnum("processing_status", [
   "failed",
 ]);
 
+export const emailCategory = pgEnum("email_category", [
+  "application_confirmation",
+  "interview_invitation",
+  "assessment",
+  "rejection",
+  "offer",
+  "recruiter_message",
+  "application_follow_up",
+  "other",
+]);
+
+export const emailMatchStatus = pgEnum("email_match_status", [
+  "unmatched",
+  "pending_confirmation",
+  "matched",
+  "ignored",
+]);
+
+export const contactSource = pgEnum("contact_source", ["job_posting", "company_info", "user"]);
+
+export const outreachStatus = pgEnum("outreach_status", [
+  "draft",
+  "ready",
+  "sent",
+  "replied",
+  "follow_up",
+  "closed",
+]);
+
+export const outreachResponseCategory = pgEnum("outreach_response_category", [
+  "positive",
+  "negative",
+  "neutral",
+  "request_for_information",
+  "interview",
+  "other",
+]);
+
+export const userRole = pgEnum("user_role", ["user", "admin"]);
+
 export const users = pgTable(
   "users",
   {
@@ -74,6 +114,8 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     name: text("name").notNull(),
     image: text("image"),
+    role: userRole("role").notNull().default("user"),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [uniqueIndex("users_email_normalized_idx").on(table.emailNormalized)],
@@ -751,7 +793,118 @@ export const usageCounters = pgTable(
   ],
 );
 
+export const emailThreads = pgTable(
+  "email_threads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    subject: text("subject"),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("email_threads_user_thread_idx").on(table.userId, table.gmailThreadId)],
+);
+
+export const emailMessages = pgTable(
+  "email_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    threadId: uuid("thread_id").references(() => emailThreads.id, { onDelete: "cascade" }),
+    providerMessageId: text("provider_message_id").notNull(),
+    sender: text("sender").notNull(),
+    recipient: text("recipient"),
+    subject: text("subject"),
+    snippet: text("snippet"),
+    bodyText: text("body_text"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    classification: emailCategory("classification"),
+    classificationConfidence: numeric("classification_confidence", { precision: 4, scale: 3 }),
+    applicationId: uuid("application_id").references(() => applications.id, { onDelete: "set null" }),
+    matchStatus: emailMatchStatus("match_status").notNull().default("unmatched"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("email_messages_user_provider_idx").on(table.userId, table.providerMessageId),
+    index("email_messages_user_received_idx").on(table.userId, table.receivedAt),
+    index("email_messages_application_idx").on(table.applicationId),
+  ],
+);
+
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    company: text("company").notNull(),
+    name: text("name"),
+    role: text("role"),
+    email: text("email"),
+    source: contactSource("source").notNull(),
+    confidence: numeric("confidence", { precision: 4, scale: 3 }).notNull().default("1"),
+    ...timestamps,
+  },
+  (table) => [index("contacts_user_created_idx").on(table.userId, table.createdAt)],
+);
+
+export const outreachMessages = pgTable(
+  "outreach_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    applicationId: uuid("application_id").references(() => applications.id, { onDelete: "set null" }),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    status: outreachStatus("status").notNull().default("draft"),
+    followUpCount: integer("follow_up_count").notNull().default(0),
+    maxFollowUps: integer("max_follow_ups").notNull().default(1),
+    sourceFacts: jsonb("source_facts").notNull().default({}),
+    aiProvider: text("ai_provider"),
+    aiModel: text("ai_model"),
+    promptVersion: text("prompt_version"),
+    providerMessageId: text("provider_message_id"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("outreach_messages_user_status_idx").on(table.userId, table.status),
+    index("outreach_messages_contact_idx").on(table.contactId),
+  ],
+);
+
+export const outreachEvents = pgTable(
+  "outreach_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    outreachId: uuid("outreach_id")
+      .notNull()
+      .references(() => outreachMessages.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    responseCategory: outreachResponseCategory("response_category"),
+    note: text("note"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("outreach_events_outreach_idx").on(table.outreachId, table.occurredAt)],
+);
+
 export type Job = typeof jobs.$inferSelect;
 export type Application = typeof applications.$inferSelect;
 export type ApplicationMaterial = typeof applicationMaterials.$inferSelect;
+export type EmailMessage = typeof emailMessages.$inferSelect;
+export type Contact = typeof contacts.$inferSelect;
+export type OutreachMessage = typeof outreachMessages.$inferSelect;
 
